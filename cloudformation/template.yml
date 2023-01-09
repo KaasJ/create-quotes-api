@@ -1,0 +1,92 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: iQuote API infrastructure and subdomain setup
+
+Globals:
+  Function:
+    Handler: index.handler
+    Runtime: nodejs12.x
+    Timeout: 30
+
+  Api:
+    EndpointConfiguration: REGIONAL
+
+Parameters:
+  BaseDomain:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: '/global/base.domain'
+
+  BaseDomainCertificate:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: '/global/base.domain.cert.arn'
+
+  BaseDomainHostedZoneId:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: '/global/base.domain.hosted.zone.id'
+
+  Subdomain:
+    Type: String
+    Default: iquote-api
+
+Resources:
+  RestApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: main
+      TracingEnabled: true
+
+
+  CreateGenericQuoteFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: iquote-api-create-generic-quote
+      Timeout: 120
+      MemorySize: 192
+      AutoPublishAlias: live
+      CodeUri: ../dist/b2c/create-generic-quote
+      Tracing: Active
+      Policies:
+        - KMSDecryptPolicy:
+            KeyId: alias/aws/ssm
+        - Statement:
+            - Effect: Allow
+              Action:
+                - ssm:GetParameter
+                - ssm:GetParameters
+              Resource: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/IQUOTE-API/*'
+      Events:
+        CreateGenericQuote:
+          Type: Api
+          Properties:
+            Path: /v1/create-generic-quote
+            Method: post
+            RestApiId: !Ref RestApi
+
+
+  CustomDomainName:
+    Type: AWS::ApiGateway::DomainName
+    Properties:
+      RegionalCertificateArn: !Ref BaseDomainCertificate
+      DomainName: !Sub '${Subdomain}.${BaseDomain}'
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+    DependsOn:
+      - RestApimainStage
+
+  CustomDomainMapping:
+    Type: AWS::ApiGateway::BasePathMapping
+    Properties:
+      DomainName: !Ref CustomDomainName
+      RestApiId: !Ref RestApi
+      Stage: main
+
+  CustomDomainDNS:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      Type: A
+      Name: !Sub '${Subdomain}.${BaseDomain}'
+      HostedZoneId: !Ref BaseDomainHostedZoneId
+      AliasTarget:
+        DNSName: !GetAtt CustomDomainName.RegionalDomainName
+        HostedZoneId: !GetAtt CustomDomainName.RegionalHostedZoneId

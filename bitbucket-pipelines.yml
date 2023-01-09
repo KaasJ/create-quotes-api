@@ -1,0 +1,90 @@
+definitions:
+  services:
+    docker:
+      memory: 2048
+  steps:
+    - step: &build-test-prepare-for-deployment
+        name: Build and push to S3
+        image: node:12-alpine
+        script:
+          - export AWS_ACCESS_KEY_ID=$STAG_AWS_ACCESS_KEY_ID
+          - export AWS_SECRET_ACCESS_KEY=$STAG_AWS_SECRET_ACCESS_KEY
+          - |
+            apk -v --update add \
+              python3 \
+              py3-pip \
+              groff \
+              less \
+              mailcap \
+              && \
+            pip3 install --upgrade awscli==1.16.110 s3cmd==2.0.1 python-magic && \
+            rm /var/cache/apk/*
+          - npm ci
+          - npm test
+          - npm run webpack -- --mode production
+          - >
+            aws cloudformation package \
+              --template-file cloudformation/template.yml \
+              --output-template-file template-packaged.yml \
+              --s3-bucket $S3_BUCKET \
+              --region eu-central-1
+          - >
+            aws cloudformation package \
+              --template-file cloudformation/graphql-template.yml \
+              --output-template-file graphql-template-packaged.yml \
+              --s3-bucket $S3_BUCKET \
+              --region eu-central-1
+
+        artifacts:
+          - template-packaged.yml
+          - graphql-template-packaged.yml
+
+pipelines:
+  branches:
+    master:
+      - step: *build-test-prepare-for-deployment
+      - step:
+          name: Deploy to staging
+          image: atlassian/pipelines-awscli
+          deployment: staging
+          script:
+            - export AWS_ACCESS_KEY_ID=$STAG_AWS_ACCESS_KEY_ID
+            - export AWS_SECRET_ACCESS_KEY=$STAG_AWS_SECRET_ACCESS_KEY
+            - >
+              aws cloudformation deploy \
+                --template-file template-packaged.yml \
+                --stack-name $STACK_NAME \
+                --capabilities CAPABILITY_IAM \
+                --region eu-central-1 \
+                --parameter-overrides "Environment=acc" \
+                --no-fail-on-empty-changeset
+            - >
+              aws cloudformation deploy \
+                --template-file graphql-template-packaged.yml \
+                --stack-name $STACK_NAME-graphql \
+                --capabilities CAPABILITY_NAMED_IAM \
+                --region eu-central-1 \
+                --no-fail-on-empty-changeset
+    release:
+      - step: *build-test-prepare-for-deployment
+      - step:
+          name: Deploy to production
+          image: atlassian/pipelines-awscli
+          deployment: production
+          script:
+            - export AWS_ACCESS_KEY_ID=$PROD_AWS_ACCESS_KEY_ID
+            - export AWS_SECRET_ACCESS_KEY=$PROD_AWS_SECRET_ACCESS_KEY
+            - >
+              aws cloudformation deploy \
+                --template-file template-packaged.yml \
+                --stack-name $STACK_NAME \
+                --capabilities CAPABILITY_IAM \
+                --region eu-central-1 \
+                --no-fail-on-empty-changeset
+            - >
+              aws cloudformation deploy \
+                --template-file graphql-template-packaged.yml \
+                --stack-name $STACK_NAME-graphql \
+                --capabilities CAPABILITY_NAMED_IAM \
+                --region eu-central-1 \
+                --no-fail-on-empty-changeset
