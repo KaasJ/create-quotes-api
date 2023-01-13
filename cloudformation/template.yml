@@ -58,7 +58,7 @@ Resources:
         CreateGenericQuote:
           Type: Api
           Properties:
-            Path: /v1/create-generic-quote
+            Path: /v1/create-quote
             Method: post
             RestApiId: !Ref RestApi
 
