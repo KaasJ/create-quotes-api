@@ -1,19 +1,25 @@
-# IQuoteApi
+# Create quote logic
 
-## System Architecture
+An api that compiles products for a quote based on logic written in Google Sheets.
 
-## GraphQl
+The goal of this project was to test the feasibility of using Google Spreadsheets as a source for the business logic needed for quote creation. Reasons to start this project comes from the fact that maintaining the product addition logic was a time consuming and costly processes. Making it worth the effort to experiment with ways to empower non-dev's to view and update the business logic. 
 
-Inside the cloudformation folder is the infrastructure, schema and resolvers for graphQl actions on the IQuote.
+Project has been successfuly tested but was never implemented. An important downside of this project was the added risk and loose of control over the logic.
 
-## To test locally
 
+**Please note that this is a _test_ project and a stripped down version of the original API**
+## Local development 
+You will need [SAM-CLI](https://github.com/awslabs/aws-sam-cli) to run this api.
+
+- Run `npm run setup` 
+- Run `npm install` to install dependencies
 - Run `npm run watch`
-- Run `npm run dev`
+- Invoke the lambda using `npm run create-quotes-in-sugar`. You can edit the lambda input in the `create-quote.json` file in the task-examples folder. 
+## API
 
-#### Create Quotes
+The API exposes an endpoint that can be used to invoke the quote creation lambda.
 
-`POST /v1/iquotes`
+`POST /v1/create-quote`
 
 ```json
 {
@@ -22,4 +28,5 @@ Inside the cloudformation folder is the infrastructure, schema and resolvers for
 }
 ```
 
-`userId` above, can be found by clicking the "Launch 2Solar" button, and grabbing the ID from the URL in 2Solar
+## Deployments
+Deployments are handled by Bitbucket Pipelines (config in `bitbucket-pipelines.yml`) and make use of SAM, a layer on top of Cloudformation created by AWS.

@@ -9,7 +9,7 @@
     "setup": "git config core.hooksPath bin/.git-hooks",
     "dev": "source bin/env-local.sh && sam local start-api -t cloudformation/template.yml",
     "format-all": "npx prettier@2.0.4 ./src/** --write",
-    "create-pv-quotes-in-sugar": "source bin/env-local.sh && sam local invoke CreateGenericQuoteFunction -t cloudformation/template.yml -e task-examples/create-generic-quote.json"
+    "create-quotes-in-sugar": "source bin/env-local.sh && sam local invoke CreateQuoteFunction -t cloudformation/template.yml -e task-examples/create-quote.json"
   },
   "keywords": [],
   "author": "",

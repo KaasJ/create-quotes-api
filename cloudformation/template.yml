@@ -36,14 +36,14 @@ Resources:
       TracingEnabled: true
 
 
-  CreateGenericQuoteFunction:
+  CreateQuoteFunction:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: iquote-api-create-generic-quote
+      FunctionName: iquote-api-create-quote
       Timeout: 120
       MemorySize: 192
       AutoPublishAlias: live
-      CodeUri: ../dist/b2c/create-generic-quote
+      CodeUri: ../dist/b2c/create-quote
       Tracing: Active
       Policies:
         - KMSDecryptPolicy:
